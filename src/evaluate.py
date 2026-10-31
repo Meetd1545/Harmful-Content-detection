@@ -154,9 +154,18 @@ def main():
             an = LLMAnalyser(args.llm_backend); llm = an.llm
         index = PatternIndex()
         llm_res, evs, routed = [], [], []
+        cached = {}  # reuse LLM replies from an earlier, interrupted run with the same sample
+        if not args.mock_llm and (RESULTS / "llm_outputs.jsonl").exists():
+            for ln in (RESULTS / "llm_outputs.jsonl").read_text(encoding="utf-8").splitlines():
+                try:
+                    o = json.loads(ln); cached[str(o.pop("id"))] = o
+                except Exception:
+                    pass
+            if cached:
+                print(f"  reusing {len(cached)} LLM replies saved by the previous run")
         with open(RESULTS / "llm_outputs.jsonl", "w", encoding="utf-8") as fo:
             for i, text in enumerate(S["text"]):
-                r = an.analyse(text)
+                r = cached.get(str(S.loc[i, "id"])) or an.analyse(text)
                 llm_res.append(r)
                 fo.write(json.dumps({"id": S.loc[i, "id"], **{k2: v for k2, v in r.items() if k2 != "raw"}}, ensure_ascii=False) + "\n")
                 evs.append(gather_evidence(preprocess(text), index))
@@ -198,15 +207,43 @@ def main():
         harm_idx = np.where((test[DIMENSIONS] == 1).any(axis=1).values)[0]
         H = test.iloc[rng.choice(harm_idx, min(args.rob, len(harm_idx)), replace=False)].reset_index(drop=True)
         sets = {"original": H["text"].tolist(), "obfuscated": [rb.obfuscate(t) for t in H["text"]]}
-        print("  creating paraphrases ..."); sets["llm_paraphrased"] = [rb.paraphrase(llm, t) for t in H["text"]]
-        print("  generating new messages ..."); sets["llm_generated"] = rb.generate(llm, args.gen)
+        var_file = RESULTS / "adversarial_variants_PRIVATE.json"
+        saved = json.loads(var_file.read_text(encoding="utf-8")) if (var_file.exists() and not args.mock_llm) else {}
+        if saved.get("original") == sets["original"] and saved.get("llm_paraphrased") and saved.get("llm_generated"):
+            print("  reusing paraphrased and generated messages from the previous run")
+            sets["llm_paraphrased"], sets["llm_generated"] = saved["llm_paraphrased"], saved["llm_generated"]
+        else:
+            print("  creating paraphrases ..."); sets["llm_paraphrased"] = [rb.paraphrase(llm, t) for t in H["text"]]
+            print("  generating new messages ..."); sets["llm_generated"] = rb.generate(llm, args.gen)
+            if not args.mock_llm:
+                var_file.write_text(json.dumps({k2: sets[k2] for k2 in ("original", "llm_paraphrased", "llm_generated")},
+                                               ensure_ascii=False), encoding="utf-8")
         sets["embedded_instructions"] = [rb.inject(t, i) for i, t in enumerate(H["text"])]
         rob, cache = {}, {}
+        rob_file = RESULTS / "llm_robustness_cache.jsonl"
+        rcache = {}
+        if not args.mock_llm and rob_file.exists():
+            for ln in rob_file.read_text(encoding="utf-8").splitlines():
+                try:
+                    o = json.loads(ln); rcache[o.pop("text")] = o
+                except Exception:
+                    pass
+
+        def rob_analyse(t):
+            if t in rcache:
+                return rcache[t]
+            r = {k2: v for k2, v in an.analyse(t).items() if k2 != "raw"}
+            if not args.mock_llm:
+                rcache[t] = r
+                with open(rob_file, "a", encoding="utf-8") as fr:
+                    fr.write(json.dumps({"text": t, **r}, ensure_ascii=False) + "\n")
+            return r
+
         for name, texts in sets.items():
             if not texts:
                 continue
             q2 = apply_temperatures(screener.logits(texts), temps)
-            res3 = [an.analyse(t) for t in texts]
+            res3 = [rob_analyse(t) for t in texts]
             q3 = np.array([[r.get(d, 0.0) if r["valid"] else q2[i, j] for j, d in enumerate(DIMENSIONS)] for i, r in enumerate(res3)])
             q4 = []
             for i, t in enumerate(texts):
@@ -223,7 +260,7 @@ def main():
         R["robustness_detection_rate"] = rob
         pd.DataFrame({k2: pd.Series(v) for k2, v in sets.items()}).to_csv(RESULTS / "adversarial_variants_PRIVATE.csv", index=False)
 
-    (RESULTS / "results.json").write_text(json.dumps(R, indent=2, ensure_ascii=False))
+    (RESULTS / "results.json").write_text(json.dumps(R, indent=2, ensure_ascii=False), encoding="utf-8")
     write_tables(R)
     make_charts(R)
     txt = write_report_text(R)
