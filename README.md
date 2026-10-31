@@ -44,10 +44,13 @@ See **RUN_ON_LAPTOP.txt**. In short: `python run_easy.py`, then open `results/RE
 Open the web app: `python webapp.py` (opens http://localhost:8501).
 Try one message in the terminal: `python check_message.py "your message"`.
 
-## Advanced: full pipeline
+## Full run with an NVIDIA GPU (M2 transformer + LLM)
+Install Ollama (ollama.com), then: `python run_full.py`. It installs PyTorch with GPU support, trains M2 and runs M1–M4 and the robustness tests.
+
+## Advanced: step by step
 ```bash
 pip install -r requirements.txt
-bash run_all.sh                 # needs a GPU for the transformer; CPU works but is slow
+bash run_all.sh                 # the transformer needs an NVIDIA GPU
 # LLM on a laptop via Ollama instead of Hugging Face:
 #   install Ollama, run `ollama pull qwen2.5:3b`, then set LLM_BACKEND = "ollama" in src/config.py
 python webapp.py                # web app at http://localhost:8501
