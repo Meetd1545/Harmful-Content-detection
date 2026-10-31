@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Message Checker</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #ffffff; --ink: #1c2430; --muted: #5d6b7c; --line: #e2e7ee;
+    --brand: #1f4e79; --brand-2: #2e75b6;
+    --high: #c62828; --high-bg: #fdecea; --med: #b26a00; --med-bg: #fff4e0; --low: #2e7d32; --low-bg: #e8f5e9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  header { background: var(--brand); color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header .logo { width: 34px; height: 34px; border-radius: 8px; background: #fff2; display: grid; place-items: center; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header p { margin: 0; font-size: 13px; opacity: .85; }
+  header .status { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #ffffff1f; border: 1px solid #ffffff33; white-space: nowrap; }
+  .chip b { font-weight: 600; }
+  main { max-width: 1240px; margin: 22px auto; padding: 0 20px; display: grid; grid-template-columns: 420px 1fr; gap: 20px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 2px #0000000a; }
+  .card + .card { margin-top: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: var(--brand); text-transform: uppercase; letter-spacing: .04em; }
+  textarea { width: 100%; min-height: 150px; resize: vertical; padding: 12px; border: 1px solid #cfd7e2; border-radius: 8px; font: inherit; color: inherit; }
+  textarea:focus { outline: 2px solid var(--brand-2); border-color: transparent; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+  .examples button { border: 1px solid #cfd7e2; background: #f8fafc; border-radius: 999px; padding: 4px 11px; font-size: 12.5px; cursor: pointer; color: var(--ink); }
+  .examples button:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .btn { border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--brand-2); color: #fff; }
+  .btn.primary:disabled { opacity: .6; cursor: wait; }
+  .btn.ghost { background: #eef2f7; color: var(--ink); }
+  .hint { font-size: 12.5px; color: var(--muted); }
+  .history { list-style: none; margin: 0; padding: 0; }
+  .history li { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .history li:first-child { border-top: 0; }
+  .history .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .history .p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .tag.HIGH { background: var(--high-bg); color: var(--high); } .tag.MEDIUM { background: var(--med-bg); color: var(--med); } .tag.LOW { background: var(--low-bg); color: var(--low); }
+  .empty { color: var(--muted); text-align: center; padding: 60px 20px; }
+  .empty svg { opacity: .35; }
+  .verdict { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 10px; margin-bottom: 16px; }
+  .verdict.HIGH { background: var(--high-bg); } .verdict.MEDIUM { background: var(--med-bg); } .verdict.LOW { background: var(--low-bg); }
+  .verdict .big { font-size: 22px; font-weight: 700; }
+  .verdict.HIGH .big { color: var(--high); } .verdict.MEDIUM .big { color: var(--med); } .verdict.LOW .big { color: var(--low); }
+  .verdict .meta { font-size: 13px; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; }
+  @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+  .msg { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; line-height: 2; white-space: pre-wrap; word-break: break-word; }
+  mark { padding: 1px 4px; border-radius: 4px; }
+  mark sup { font-size: 10px; font-weight: 600; color: #7a3d00; margin-left: 3px; text-transform: uppercase; letter-spacing: .02em; }
+  .m-urgency, .m-scarcity { background: #fbd5b5; } .m-fear_threat { background: #f8c4c4; } .m-false_authority, .m-impersonation { background: #fde9a6; }
+  .m-reward_reciprocity, .m-social_proof { background: #cdeac0; } .m-loaded_language, .m-false_dilemma { background: #c9dcf2; } .m-instruction_override { background: #ff9e9e; }
+  .bar { margin: 10px 0 14px; } .bar .lab { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; }
+  .bar .track { height: 10px; border-radius: 6px; background: #edf1f6; overflow: hidden; margin-top: 5px; }
+  .bar .fill { height: 100%; border-radius: 6px; transition: width .5s; }
+  .section { margin-top: 18px; } .section h3 { font-size: 13.5px; margin: 0 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .list { margin: 0; padding-left: 18px; } .list li { margin: 3px 0; }
+  .advice { background: #e8f1fb; border-left: 4px solid var(--brand-2); padding: 10px 14px; border-radius: 6px; }
+  .fb { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .fb label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  a.report { margin-left: auto; font-size: 13px; color: var(--high); font-weight: 600; text-decoration: none; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid #fff8; border-top-color: #fff; border-radius: 50%; display: inline-block; animation: s .8s linear infinite; vertical-align: -3px; margin-right: 6px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 10px 0 26px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg></div>
+  <div><h1>Message Checker</h1><p>Checks a message for malicious, deceptive and manipulative content and explains why</p></div>
+  <div class="status" id="status"><span class="chip">Loading…</span></div>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <h2>Check a message</h2>
+      <textarea id="text" placeholder="Paste an SMS, WhatsApp message, email, social media post or web text (English, Hindi or Hinglish)…"></textarea>
+      <div class="hint">Try an example:</div>
+      <div class="examples" id="examples"></div>
+      <div class="row">
+        <button class="btn primary" id="check">Check message</button>
+        <button class="btn ghost" id="clear">Clear</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Recent checks</h2>
+      <ul class="history" id="history"><li class="hint">No messages checked yet.</li></ul>
+    </div>
+  </section>
+
+  <section class="card" id="result">
+    <div class="empty">
+      <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#1f4e79" stroke-width="1.5"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/></svg>
+      <p>Paste a message and press <b>Check message</b> to see the result.</p>
+    </div>
+  </section>
+</main>
+<footer>Advisory only: the tool never blocks or reports anything by itself. You make the final decision.</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nice = (s) => s.replace(/_/g, " ");
+const LANG = { en: "English", hi: "Hindi", hinglish: "Hinglish" };
+const COL = { HIGH: "#c62828", MEDIUM: "#e08a00", LOW: "#2e7d32" };
+let last = null;
+
+async function init() {
+  const s = await (await fetch("/api/status")).json();
+  $("status").innerHTML = `<span class="chip">Screener: <b>${esc(s.screener)}</b></span>` +
+    `<span class="chip">LLM: <b>${esc(s.llm)}</b></span>`;
+  s.examples.forEach((e) => {
+    const b = document.createElement("button");
+    b.textContent = e.label; b.onclick = () => { $("text").value = e.text; check(); };
+    $("examples").appendChild(b);
+  });
+}
+
+function highlight(text, techs) {
+  const spans = [];
+  techs.forEach((t) => {
+    const i = text.toLowerCase().indexOf(t.span.toLowerCase());
+    if (i >= 0) spans.push([i, i + t.span.length, t.name]);
+  });
+  spans.sort((a, b) => a[0] - b[0]);
+  let out = "", pos = 0;
+  spans.forEach(([s, e, n]) => {
+    if (s < pos) return;
+    out += esc(text.slice(pos, s)) + `<mark class="m-${n}">${esc(text.slice(s, e))}<sup>${esc(nice(n))}</sup></mark>`;
+    pos = e;
+  });
+  return out + esc(text.slice(pos));
+}
+
+function barColour(v) { return v >= 0.7 ? COL.HIGH : v >= 0.4 ? COL.MEDIUM : COL.LOW; }
+
+function render(r, text) {
+  const dims = ["malicious", "deceptive", "manipulative"];
+  const bars = dims.map((d) => `<div class="bar"><div class="lab"><span>${d[0].toUpperCase() + d.slice(1)}</span><span>${Math.round(r[d] * 100)}%</span></div>
+      <div class="track"><div class="fill" style="width:${Math.round(r[d] * 100)}%;background:${barColour(r[d])}"></div></div></div>`).join("");
+  const techs = r.techniques.length
+    ? `<ul class="list">${r.techniques.map((t) => `<li><b>${esc(nice(t.name))}</b>: “${esc(t.span)}”</li>`).join("")}</ul>` +
+      (r.technique_source === "cues" ? `<div class="note">Cue words found by simple rules (the LLM analyser is off). Start Ollama for full technique analysis.</div>` : "")
+    : `<div class="hint">No manipulation techniques found.</div>`;
+  const links = r.evidence.urls.map((u) => `<li><code>${esc(u.domain)}</code>: ${u.official ? "official domain" : esc(u.reason || "no known problem found")}</li>`).join("");
+  const pats = r.evidence.pattern_matches.map((m) => `<li>Similar to a known scam: <b>${esc(nice(m.scam_type))}</b></li>`).join("");
+  $("result").innerHTML = `
+    <div class="verdict ${r.risk}">
+      <div class="big">${r.risk} RISK</div>
+      <div class="meta">Confidence: <b>${esc(r.confidence)}</b> · Language: <b>${esc(LANG[r.language] || r.language)}</b> · ${r.used_llm ? "LLM analysis used" : "Screener and evidence checks"} · ${r.latency_s} s</div>
+    </div>
+    <div class="grid2">
+      <div>
+        <h2>Your message</h2>
+        <div class="msg">${highlight(text, r.techniques)}</div>
+        <div class="section"><h3>Techniques</h3>${techs}</div>
+      </div>
+      <div>
+        <h2>Risk scores</h2>${bars}
+        <div class="section"><h3>Evidence</h3>${links || pats ? `<ul class="list">${links}${pats}</ul>` : `<div class="hint">No links or known scam patterns found.</div>`}</div>
+      </div>
+    </div>
+    <div class="section"><h3>Why?</h3><div>${esc(r.explanation)}</div></div>
+    <div class="section"><h3>What should I do?</h3><div class="advice">${esc(r.advice)}</div></div>
+    <div class="section"><h3>Was this result right?</h3>
+      <div class="fb">
+        <button class="btn ghost" data-v="correct">👍 Correct</button>
+        <button class="btn ghost" data-v="wrong">👎 Wrong</button>
+        <label><input type="checkbox" id="consent"> Store this message (anonymised) to improve the tool</label>
+        <a class="report" href="https://cybercrime.gov.in" target="_blank" rel="noopener">Report fraud: cybercrime.gov.in / 1930 ↗</a>
+      </div>
+      <div class="note" id="fbmsg"></div>
+    </div>`;
+  document.querySelectorAll(".fb button").forEach((b) => b.onclick = () => feedback(b.dataset.v));
+}
+
+async function check() {
+  const text = $("text").value.trim();
+  if (!text) { $("text").focus(); return; }
+  const btn = $("check"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Checking…';
+  try {
+    const res = await fetch("/api/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || "Error");
+    last = { r, text }; render(r, text); loadHistory();
+  } catch (e) {
+    $("result").innerHTML = `<div class="empty">Something went wrong: ${esc(e.message)}</div>`;
+  } finally { btn.disabled = false; btn.textContent = "Check message"; }
+}
+
+async function feedback(v) {
+  if (!last) return;
+  await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: last.r.id, verdict: v, language: last.r.language, risk: last.r.risk, consent: $("consent").checked, text: last.text }) });
+  $("fbmsg").textContent = "Thank you, your feedback was saved.";
+}
+
+async function loadHistory() {
+  const h = await (await fetch("/api/history")).json();
+  $("history").innerHTML = h.length ? h.map((x) => `<li><span class="t">${x.time}</span><span class="tag ${x.risk}">${x.risk}</span><span class="p">${esc(x.preview)}</span></li>`).join("")
+    : '<li class="hint">No messages checked yet.</li>';
+}
+
+$("check").onclick = check;
+$("clear").onclick = () => { $("text").value = ""; $("text").focus(); };
+$("text").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) check(); });
+init();
+</script>
+</body>
+</html>
