@@ -113,8 +113,21 @@ const LANG = { en: "English", hi: "Hindi", hinglish: "Hinglish" };
 const COL = { HIGH: "#c62828", MEDIUM: "#e08a00", LOW: "#2e7d32" };
 let last = null;
 
+const NOT_SERVED = `<div class="empty"><b>The checker is not connected.</b><br><br>This page has to be opened through the app, not as a file or with Live Server.<br>
+  In the VS Code terminal, inside the project folder, run:<br><br><code>python webapp.py</code><br><br>
+  then open <a href="http://localhost:8501">http://localhost:8501</a> (it opens by itself).</div>`;
+
 async function init() {
-  const s = await (await fetch("/api/status")).json();
+  let s;
+  try {
+    const res = await fetch("/api/status");
+    s = await res.json();
+  } catch (e) {
+    $("status").innerHTML = '<span class="chip">Not connected</span>';
+    $("result").innerHTML = NOT_SERVED;
+    $("check").disabled = true;
+    return;
+  }
   $("status").innerHTML = `<span class="chip">Screener: <b>${esc(s.screener)}</b></span>` +
     `<span class="chip">LLM: <b>${esc(s.llm)}</b></span>`;
   s.examples.forEach((e) => {
@@ -188,7 +201,8 @@ async function check() {
   const btn = $("check"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Checking…';
   try {
     const res = await fetch("/api/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
-    const r = await res.json();
+    let r;
+    try { r = await res.json(); } catch (_) { $("result").innerHTML = NOT_SERVED; return; }
     if (!res.ok) throw new Error(r.error || "Error");
     last = { r, text }; render(r, text); loadHistory();
   } catch (e) {
