@@ -1,0 +1,36 @@
+HOW TO RUN ON YOUR LAPTOP (VS Code or Command Prompt) - no GPU needed
+=====================================================================
+
+ONE-TIME SETUP
+1. Install Python 3.10 or newer from https://www.python.org/downloads/
+   (on Windows, tick "Add python.exe to PATH" during installation).
+2. (Optional, for the LLM part) Install Ollama from https://ollama.com and open it once.
+   The script downloads the model qwen2.5:3b (about 2 GB) automatically the first time.
+3. Unzip harmful-content-detection.zip, e.g. to Desktop.
+
+RUN
+4. Open the folder "harmful-content-detection":
+   - VS Code: File > Open Folder > choose it, then Terminal > New Terminal
+   - Command Prompt: type   cd Desktop\harmful-content-detection
+5. Type:   python run_easy.py
+   (on Mac / Linux:  python3 run_easy.py)
+   - Without Ollama: about 2-5 minutes.
+   - With Ollama: about 15-40 minutes (the LLM reads one message at a time).
+   For the final report use:   python run_easy.py --full   (slower, larger samples)
+
+GET THE RESULTS
+6. Open  results\REPORT_OUTPUT.txt  - every table is formatted to match Chapter 4.
+   Charts for the report are in the results folder:
+   chart_dataset.png, chart_f1_by_approach.png, chart_robustness.png
+   Send REPORT_OUTPUT.txt and the three charts to get them written into the report.
+
+DEMO
+7. Check any message:
+   python check_message.py "Aapka bijli connection aaj raat kaat diya jayega. Turant call karein"
+8. Web app:  python webapp.py   (your browser opens http://localhost:8501; keep the window open)
+
+NOTES
+- Model M2 (MuRIL transformer) needs a GPU, so the laptop run skips it and the cascade uses
+  M1 as its screener. To include M2, run  python src/transformer_model.py  on a machine with a GPU.
+- If a step shows [ERROR], take a screenshot and send it.
+- If "python" is not recognised on Windows, try  py run_easy.py
