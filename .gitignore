@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+data/raw/
+data/processed/
+models/*
+!models/.gitkeep
+results/*
+!results/.gitkeep
+data/manual/indian_messages_collected.csv
+.venv/
