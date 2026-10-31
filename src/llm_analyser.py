@@ -76,12 +76,21 @@ class LLMBackend:
             except requests.exceptions.ConnectionError:
                 raise SystemExit("Ollama is not running. Install it from ollama.com, then run:  ollama pull " + LLM_OLLAMA_MODEL)
             body = {"model": LLM_OLLAMA_MODEL, "messages": messages, "stream": False,
-                    "options": {"temperature": temperature, "num_predict": max_new_tokens, "seed": 42}}
+                    "options": {"temperature": temperature, "num_predict": max_new_tokens, "seed": 42, "num_ctx": 4096}}
             if json_mode:
                 body["format"] = "json"
-            r = requests.post(LLM_OLLAMA_URL, json=body, timeout=300)
-            r.raise_for_status()
-            return r.json()["message"]["content"]
+            last_err = None
+            for attempt in range(3):  # Ollama can return 500 if the model runner restarts (e.g. GPU memory is full)
+                try:
+                    r = requests.post(LLM_OLLAMA_URL, json=body, timeout=300)
+                    r.raise_for_status()
+                    return r.json()["message"]["content"]
+                except requests.exceptions.RequestException as e:
+                    last_err = e
+                    print(f"  (Ollama error, retrying {attempt + 1}/3: {e})", flush=True)
+                    time.sleep(5 * (attempt + 1))
+            print(f"  (Ollama failed 3 times; this item is counted as an invalid LLM reply: {last_err})", flush=True)
+            return ""
         import torch
         prompt = self.tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         ids = self.tok(prompt, return_tensors="pt").to(self.model.device)
