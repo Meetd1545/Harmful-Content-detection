@@ -31,6 +31,6 @@ DEMO
 
 NOTES
 - Model M2 (MuRIL transformer) needs a GPU, so the laptop run skips it and the cascade uses
-  M1 as its screener. To include M2, run  python src/transformer_model.py  on a machine with a GPU.
+  M1 as its screener. With an NVIDIA GPU, run  python run_full.py  to train M2 and run every experiment.
 - If a step shows [ERROR], take a screenshot and send it.
 - If "python" is not recognised on Windows, try  py run_easy.py
